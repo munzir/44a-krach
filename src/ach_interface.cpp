@@ -42,19 +42,18 @@
 
 #include "ach_interface.h"
 
-#include <somatic.h>  // SOMATIC_PACK_SEND, has correct order of other includes
+#include <somatic.h>  // has correct order of other includes, SOMATIC_WAIST_LAST_UNPACK
 
-#include <ach.h>  // ach_status_t, ach_result_to_string, ach_flush(), ach_close()
-#include <amino.h>                     // for ach.h to compile, aa_tm_add
-#include <config4cpp/Configuration.h>  // config4cpp::Configuration
-#include <somatic.pb-c.h>  // SOMATIC__: EVENT, MSG_TYPE; somatic__anything__init()
-#include <somatic/daemon.h>  // somatic_d: _init(), _event(), _channel_open(), _check(), SOMATIC_D_GET
-#include <somatic/motor.h>  // somatic_motor_init()
-#include <somatic/msg.h>    // somatic_anything_alloc(), somatic_anything_free()
+#include <ach.h>           // ach_channel_t, ach_status_t
+#include <amino.h>         // aa_tm: _add, _sec2timespec(); aa_mem_ion_release()
+#include <somatic.pb-c.h>  // SOMATIC__: EVENT, MOTOR; somatic__anymsgtype__action()
+#include <somatic/daemon.h>  // somatic_d: _init(), _event(), _destroy(), _channel...()
+#include <somatic/motor.h>  // somati_motor: _t, _init(), _destroy(), _cmd(), _halt(), _reset(), _update()
 
-#include <stdio.h>   // std::cout
+#include <assert.h>  // assert()
 #include <string.h>  // strdup()
-#include <time.h>    // clock_gettime()
+#include <time.h>    // struct timespec, clock_gettime(), CLOCK_MONOTONIC
+#include <unistd.h>  // usleep()
 #include <cstring>   // std::memset, strcpy
 #include <string>    // std::string
 #include <vector>    // std::vector
@@ -63,6 +62,7 @@ InterfaceContext::InterfaceContext(const std::string daemon_identifier) {
   // Initialize the daemon_
   std::memset(&daemon_opts_, 0, sizeof(daemon_opts_));
   daemon_opts_.ident = strdup(daemon_identifier.c_str());
+  daemon_opts_.skip_sighandler = true;
   std::memset(&daemon_, 0, sizeof(daemon_));
   somatic_d_init(&daemon_, &daemon_opts_);
 
@@ -86,34 +86,28 @@ void InterfaceContext::Destroy() {
 }
 
 MotorInterface::MotorInterface(
-    InterfaceContext& interface_context, std::string& name,
-    std::string& command_channel_name, std::string& state_channel_name,
-    std::vector<double>& min_pos, std::vector<double>& max_pos,
-    std::vector<double>& min_vel, std::vector<double>& max_vel) {
+    InterfaceContext& interface_context, std::string name,
+    std::string command_channel_name, std::string state_channel_name,
+    int num) {
   strcpy(name_, name.c_str());
   daemon_ = &interface_context.daemon_;
-  n_ = min_pos.size();
-  assert(min_pos.size() == max_pos.size() &&
-             min_pos.size() == min_vel.size()&& position_ =
-             std::vector<double>(n_);
-         velocity_ = std::vector<double>(n_);
-         current_ = std::vector<double>(n_);
+  n_ = num;
 
-         motors_ = new somatic_motor_t(); min_pos.size() == max_vel.size());
+  motors_ = new somatic_motor_t();
   somatic_motor_init(daemon_, motors_, n_, command_channel_name.c_str(),
                      state_channel_name.c_str());
 
   // Set the min/max values for the pos/vel fields' valid and limit values
   for (int i = 0; i < n_; i++) {
-    motors->pos_valid_min[i] = min_pos[i];
-    motors->pos_valid_max[i] = max_pos[i];
-    motors->pos_limit_min[i] = min_pos[i];
-    motors->pos_limit_max[i] = max_pos[i];
+    motors_->pos_valid_min[i] = -1024.1;
+    motors_->pos_valid_max[i] =  1024.1;
+    motors_->pos_limit_min[i] = -1024.1;
+    motors_->pos_limit_max[i] =  1024.1;
 
-    motors->vel_valid_min[i] = min_vel[i];
-    motors->vel_valid_max[i] = max_vel[i];
-    motors->vel_limit_min[i] = min_vel[i];
-    motors->vel_limit_max[i] = max_vel[i];
+    motors_->vel_valid_min[i] = -1024.1;
+    motors_->vel_valid_max[i] =  1024.1;
+    motors_->vel_limit_min[i] = -1024.1;
+    motors_->vel_limit_max[i] =  1024.1;
   }
 
   // Update and reset them
@@ -128,17 +122,17 @@ void MotorInterface::Destroy() {
   delete motors_;
 }
 
-void MotorInterface::PositionCommand(const std::vector<double>& val) {
+void MotorInterface::PositionCommand(std::vector<double>& val) {
   somatic_motor_cmd(daemon_, motors_, SOMATIC__MOTOR_PARAM__MOTOR_POSITION,
                     &val[0], motors_->n, NULL);
 }
 
-void MotorInterface::VelocityCommand(const std::vector<double>& val) {
+void MotorInterface::VelocityCommand(std::vector<double>& val) {
   somatic_motor_cmd(daemon_, motors_, SOMATIC__MOTOR_PARAM__MOTOR_VELOCITY,
                     &val[0], motors_->n, NULL);
 }
 
-void MotorInterface::CurrentCommand(const std::vector<double>& val) {
+void MotorInterface::CurrentCommand(std::vector<double>& val) {
   somatic_motor_cmd(daemon_, motors_, SOMATIC__MOTOR_PARAM__MOTOR_CURRENT,
                     &val[0], motors_->n, NULL);
 }
@@ -150,18 +144,58 @@ void MotorInterface::UnlockCommand() { somatic_motor_reset(daemon_, motors_); }
 void MotorInterface::UpdateState() { somatic_motor_update(daemon_, motors_); }
 
 std::vector<double> MotorInterface::GetPosition() {
-  return std::vector<double>(motors_->pos, n_);
+  return std::vector<double>(motors_->pos, motors_->pos + n_);
 }
 
 std::vector<double> MotorInterface::GetVelocity() {
-  return std::vector<double>(motors_->vel, n_);
+  return std::vector<double>(motors_->vel, motors_->vel + n_);
 }
 
 std::vector<double> MotorInterface::GetCurrent() {
-  return std::vector<double>(motors_->cur, n_);
+  return std::vector<double>(motors_->cur, motors_->cur + n_);
 }
 
 FloatingBaseStateSensorInterface::FloatingBaseStateSensorInterface(
-    InterfaceContext& interface_context, std::string& channel);
-void FloatingBaseStateSensorInterface::UpdateState();
-void FloatingBaseStateSensorInterface::Destroy();
+    InterfaceContext& interface_context, std::string channel) {
+  imu_chan_ = new ach_channel_t();
+  daemon_ = &interface_context.daemon_;
+  somatic_d_channel_open(daemon_, imu_chan_, channel.c_str(), NULL);
+  UpdateState();
+}
+
+void FloatingBaseStateSensorInterface::UpdateState() {
+  // Current time
+  struct timespec curr_time;
+  clock_gettime(CLOCK_MONOTONIC, &curr_time);
+
+  // Time till which we will wait for a new message
+  static const double kWaitTime = 1.0 / 30.0;  // sec
+  struct timespec abs_time =
+      aa_tm_add(aa_tm_sec2timespec(kWaitTime), curr_time);
+
+  // Sit and wait until the new message arrives or time is up
+  static const int kImuChannelSize = 54;
+  ach_status_t r;
+  imu_msg_ = SOMATIC_WAIT_LAST_UNPACK(r, somatic__vector, NULL, kImuChannelSize,
+                                      imu_chan_, &abs_time);
+
+  // If no new message, no need to update
+  if (imu_msg_ == NULL) return;
+
+  // Get the base angle and angular speed from the readings (note imu mounted
+  // at 45 deg).
+  static const double kMountAngle = -.7853981634;
+  double new_x = imu_msg_->data[0] * cos(kMountAngle) -
+                 imu_msg_->data[1] * sin(kMountAngle);
+  base_angle_ = atan2(new_x, imu_msg_->data[2]);
+  base_angular_speed_ = imu_msg_->data[3] * sin(kMountAngle) +
+                        imu_msg_->data[4] * cos(kMountAngle);
+
+  // Free the unpacked message
+  somatic__vector__free_unpacked(imu_msg_, NULL);
+}
+
+void FloatingBaseStateSensorInterface::Destroy() {
+  somatic_d_channel_close(daemon_, imu_chan_);
+  delete imu_chan_;
+}
