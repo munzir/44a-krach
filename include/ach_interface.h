@@ -46,11 +46,10 @@
 #include <somatic.h>  // has correct order of other includes
 
 #include <ach.h>             // ach_channel_t
-#include <amino.h>           // needed by ach.h
-#include <somatic.pb-c.h>    // Somatic__Vector, Somatic__MotorState
+#include <somatic.pb-c.h>    // Somatic__Vector
 #include <somatic/daemon.h>  // somatic_d_t, somatic_d_opts_t
+#include <somatic/motor.h>   // somatic_motor_t
 
-#include <time.h>  // struct timespec
 #include <string>  // std::string
 #include <vector>  // std::vector
 
@@ -64,18 +63,17 @@ class InterfaceContext {
   somatic_d_opts_t daemon_opts_;
 };
 
-class MotorInterface : public MotorInterfaceBase {
+class MotorInterface {
  public:
-  MotorInterface(InterfaceContext& interface_context,
-                 std::string& motor_group_name,
-                 std::string& motor_group_command_channel_name,
-                 std::string& motor_group_state_channel_name);
+  MotorInterface(InterfaceContext& interface_context, std::string name,
+                 std::string command_channel_name,
+                 std::string state_channel_name, int num);
   ~MotorInterface() { Destroy(); }
   void Destroy();
 
-  void PositionCommand(const std::vector<double>& val);
-  void VelocityCommand(const std::vector<double>& val);
-  void CurrentCommand(const std::vector<double>& val);
+  void PositionCommand(std::vector<double>& val);
+  void VelocityCommand(std::vector<double>& val);
+  void CurrentCommand(std::vector<double>& val);
   void LockCommand();
   void UnlockCommand();
   void UpdateState();
@@ -92,14 +90,14 @@ class MotorInterface : public MotorInterfaceBase {
 class FloatingBaseStateSensorInterface {
  public:
   FloatingBaseStateSensorInterface(InterfaceContext& interface_context,
-                                   std::string& channel);
+                                   std::string channel);
   ~FloatingBaseStateSensorInterface() { Destroy(); }
   void UpdateState();
   void Destroy();
   double GetBaseAngle() const { return base_angle_; }
   double GetBaseAngularSpeed() const { return base_angular_speed_; }
 
-  ach_channel_t imu_chan_;    // unused
+  ach_channel_t* imu_chan_;   // unused
   Somatic__Vector* imu_msg_;  // unused
   somatic_d_t* daemon_;       // unused
   double base_angle_;
