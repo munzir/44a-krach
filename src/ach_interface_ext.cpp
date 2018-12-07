@@ -69,6 +69,18 @@ BOOST_PYTHON_MODULE(pykrang) {
       .def("GetVelocity", &MotorInterface::GetVelocity)
       .def("GetCurrent", &MotorInterface::GetCurrent);
 
+  py::class_<WaistInterface>(
+      "WaistInterface",
+      py::init<InterfaceContext&, std::string, std::string, std::string>())
+      .def("Destroy", &WaistInterface::Destroy)
+      .def("Stop", &WaistInterface::Stop)
+      .def("MoveForward", &WaistInterface::MoveForward)
+      .def("MoveBackward", &WaistInterface::MoveBackward)
+      .def("UpdateState", &WaistInterface::UpdateState)
+      .def("GetPosition", &WaistInterface::GetPosition)
+      .def("GetVelocity", &WaistInterface::GetVelocity)
+      .def("GetCurrent", &WaistInterface::GetCurrent);
+
   py::class_<FloatingBaseStateSensorInterface>(
       "FloatingBaseStateSensorInterface",
       py::init<InterfaceContext&, std::string>())
