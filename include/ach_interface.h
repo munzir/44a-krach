@@ -46,7 +46,7 @@
 #include <somatic.h>  // has correct order of other includes
 
 #include <ach.h>             // ach_channel_t
-#include <somatic.pb-c.h>    // Somatic__Vector
+#include <somatic.pb-c.h>    // Somatic__Vector, Somatic__Waist: Mode, Cmd
 #include <somatic/daemon.h>  // somatic_d_t, somatic_d_opts_t
 #include <somatic/motor.h>   // somatic_motor_t
 
@@ -85,6 +85,31 @@ class MotorInterface {
   somatic_d_t* daemon_;
   size_t n_;
   somatic_motor_t* motors_;
+};
+
+class WaistInterface {
+ public:
+  WaistInterface(InterfaceContext& interface_context, std::string name,
+                 std::string command_channel_name,
+                 std::string state_channel_name);
+  ~WaistInterface() { Destroy(); }
+  void Destroy();
+
+  void Stop();
+  void MoveForward();
+  void MoveBackward();
+  void UpdateState();
+  std::vector<double> GetPosition();
+  std::vector<double> GetVelocity();
+  std::vector<double> GetCurrent();
+
+ private:
+  void SendCommand(Somatic__WaistMode waist_mode);
+  char name_[128];
+  somatic_d_t* daemon_;
+  ach_channel_t* waistd_command_channel_;
+  somatic_motor_t* motors_;
+  Somatic__WaistCmd* waistd_command_msg_;
 };
 
 class FloatingBaseStateSensorInterface {

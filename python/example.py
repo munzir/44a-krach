@@ -67,5 +67,8 @@ while True:
     except KeyboardInterrupt:
         imu.Destroy()
         wheels.Destroy()
+        torso.Destroy()
+        left_arm.Destroy()
+        right_arm.Destroy()
         interface_context.Destroy()
         sys.exit(0)

@@ -42,18 +42,20 @@
 
 #include "ach_interface.h"
 
-#include <somatic.h>  // has correct order of other includes, SOMATIC_WAIST_LAST_UNPACK
+#include <somatic.h>  // has correct order of other includes, SOMATIC_WAIST_LAST_UNPACK, SOMATIC_PACK_SEND
 
-#include <ach.h>           // ach_channel_t, ach_status_t
+#include <ach.h>           // ach_channel_t, ach_status_t, ach_result_to_string
 #include <amino.h>         // aa_tm: _add, _sec2timespec(); aa_mem_ion_release()
-#include <somatic.pb-c.h>  // SOMATIC__: EVENT, MOTOR; somatic__anymsgtype__action()
+#include <somatic.pb-c.h>  // SOMATIC__: EVENT, MOTOR, WAIST_MODE; somatic__anymsgtype__action(); Somatic__Waist: Mode, Cmd
 #include <somatic/daemon.h>  // somatic_d: _init(), _event(), _destroy(), _channel...()
 #include <somatic/motor.h>  // somati_motor: _t, _init(), _destroy(), _cmd(), _halt(), _reset(), _update()
+#include <somatic/msg.h>  // somatic_anything_: alloc(), set(), free()
 
 #include <assert.h>  // assert()
 #include <string.h>  // strdup()
 #include <time.h>    // struct timespec, clock_gettime(), CLOCK_MONOTONIC
 #include <unistd.h>  // usleep()
+#include <cstdio>    // fprintf()
 #include <cstring>   // std::memset, strcpy
 #include <string>    // std::string
 #include <vector>    // std::vector
@@ -85,10 +87,10 @@ void InterfaceContext::Destroy() {
   somatic_d_destroy(&daemon_);
 }
 
-MotorInterface::MotorInterface(
-    InterfaceContext& interface_context, std::string name,
-    std::string command_channel_name, std::string state_channel_name,
-    int num) {
+MotorInterface::MotorInterface(InterfaceContext& interface_context,
+                               std::string name,
+                               std::string command_channel_name,
+                               std::string state_channel_name, int num) {
   strcpy(name_, name.c_str());
   daemon_ = &interface_context.daemon_;
   n_ = num;
@@ -100,14 +102,14 @@ MotorInterface::MotorInterface(
   // Set the min/max values for the pos/vel fields' valid and limit values
   for (int i = 0; i < n_; i++) {
     motors_->pos_valid_min[i] = -1024.1;
-    motors_->pos_valid_max[i] =  1024.1;
+    motors_->pos_valid_max[i] = 1024.1;
     motors_->pos_limit_min[i] = -1024.1;
-    motors_->pos_limit_max[i] =  1024.1;
+    motors_->pos_limit_max[i] = 1024.1;
 
     motors_->vel_valid_min[i] = -1024.1;
-    motors_->vel_valid_max[i] =  1024.1;
+    motors_->vel_valid_max[i] = 1024.1;
     motors_->vel_limit_min[i] = -1024.1;
-    motors_->vel_limit_max[i] =  1024.1;
+    motors_->vel_limit_max[i] = 1024.1;
   }
 
   // Update and reset them
@@ -153,6 +155,78 @@ std::vector<double> MotorInterface::GetVelocity() {
 
 std::vector<double> MotorInterface::GetCurrent() {
   return std::vector<double>(motors_->cur, motors_->cur + n_);
+}
+
+WaistInterface::WaistInterface(InterfaceContext& interface_context,
+                               std::string name,
+                               std::string command_channel_name,
+                               std::string state_channel_name) {
+  strcpy(name_, name.c_str());
+  daemon_ = &interface_context.daemon_;
+  waistd_command_channel_ = new ach_channel_t();
+  somatic_d_channel_open(daemon_, waistd_command_channel_,
+                         command_channel_name.c_str(), NULL);
+  motors_ = new somatic_motor_t();
+  somatic_motor_init(daemon_, motors_, 2, NULL, state_channel_name.c_str());
+  usleep(1e5);
+
+  waistd_command_msg_ = somatic_waist_cmd_alloc();
+
+  for (int i = 0; i < 2; i++) {
+    motors_->pos_valid_min[i] = -1024.1;
+    motors_->pos_limit_min[i] = -1024.1;
+    motors_->pos_valid_max[i] = 1024.1;
+    motors_->pos_limit_max[i] = 1024.1;
+
+    motors_->vel_valid_min[i] = -1024.1;
+    motors_->vel_limit_min[i] = -1024.1;
+    motors_->vel_valid_max[i] = 1024.1;
+    motors_->vel_limit_max[i] = 1024.1;
+  }
+
+  somatic_motor_update(daemon_, motors_);
+  usleep(1e5);
+}
+
+void WaistInterface::Destroy() {
+  Stop();
+  somatic_waist_cmd_free(waistd_command_msg_);
+  somatic_motor_destroy(daemon_, motors_);
+  delete motors_;
+  delete waistd_command_channel_;
+}
+
+void WaistInterface::SendCommand(Somatic__WaistMode waist_mode) {
+  somatic_waist_cmd_set(waistd_command_msg_, waist_mode);
+  ach_status_t r = SOMATIC_PACK_SEND(waistd_command_channel_,
+                                     somatic__waist_cmd, waistd_command_msg_);
+  if (ACH_OK != r)
+    fprintf(
+        stderr, "[%s] Couldn't send message: %s\n", name_,
+        ach_result_to_string(r));  // TODO: why stderr and not some somatic log?
+}
+void WaistInterface::Stop() { SendCommand(SOMATIC__WAIST_MODE__STOP); }
+
+void WaistInterface::MoveForward() {
+  SendCommand(SOMATIC__WAIST_MODE__MOVE_FWD);
+}
+
+void WaistInterface::MoveBackward() {
+  SendCommand(SOMATIC__WAIST_MODE__MOVE_REV);
+}
+
+void WaistInterface::UpdateState() { somatic_motor_update(daemon_, motors_); }
+
+std::vector<double> WaistInterface::GetPosition() {
+  std::vector<double>(motors_->pos, motors_->pos + 2);
+}
+
+std::vector<double> WaistInterface::GetVelocity() {
+  std::vector<double>(motors_->vel, motors_->vel + 2);
+}
+
+std::vector<double> WaistInterface::GetCurrent() {
+  std::vector<double>(motors_->cur, motors_->cur + 2);
 }
 
 FloatingBaseStateSensorInterface::FloatingBaseStateSensorInterface(
