@@ -54,6 +54,8 @@
 #include <string>  // std::string
 #include <vector>  // std::vector
 
+#include <boost/python.hpp>
+
 class InterfaceContext {
  public:
   InterfaceContext(const std::string daemon_identifier);
@@ -138,6 +140,7 @@ class WorldInterface {
   void Destroy();
   void Step();
   void Reset(struct Somatic_KrangPoseParams& pose);
+  void ResetExt(boost::python::dict& pose_dict);
  private:
   void SendCommand();
   somatic_d_t* daemon_;
