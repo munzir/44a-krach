@@ -60,6 +60,8 @@
 #include <string>    // std::string
 #include <vector>    // std::vector
 
+#include <boost/python.hpp>  // boost::python::dict
+
 InterfaceContext::InterfaceContext(const std::string daemon_identifier) {
   // Initialize the daemon_
   std::memset(&daemon_opts_, 0, sizeof(daemon_opts_));
@@ -218,15 +220,15 @@ void WaistInterface::MoveBackward() {
 void WaistInterface::UpdateState() { somatic_motor_update(daemon_, motors_); }
 
 std::vector<double> WaistInterface::GetPosition() {
-  std::vector<double>(motors_->pos, motors_->pos + 2);
+  return std::vector<double>(motors_->pos, motors_->pos + 2);
 }
 
 std::vector<double> WaistInterface::GetVelocity() {
-  std::vector<double>(motors_->vel, motors_->vel + 2);
+  return std::vector<double>(motors_->vel, motors_->vel + 2);
 }
 
 std::vector<double> WaistInterface::GetCurrent() {
-  std::vector<double>(motors_->cur, motors_->cur + 2);
+  return std::vector<double>(motors_->cur, motors_->cur + 2);
 }
 
 FloatingBaseStateSensorInterface::FloatingBaseStateSensorInterface(
@@ -295,6 +297,34 @@ void WorldInterface::Step() {
 void WorldInterface::Reset(struct Somatic_KrangPoseParams& pose) {
   somatic_sim_cmd_set(sim_command_msg_, SOMATIC__SIM_CMD__CODE__RESET, &pose);
   SendCommand();
+}
+
+void WorldInterface::ResetExt(boost::python::dict& pose_dict) {
+  namespace py = boost::python;
+  struct Somatic_KrangPoseParams pose;
+  pose.heading = py::extract<double>(pose_dict["heading"]);
+  pose.q_base = py::extract<double>(pose_dict["q_base"]);
+  for (int i = 0; i < 3; i++) {
+    py::tuple xyz_tuple = py::extract<py::tuple>(pose_dict["xyz"]);
+    pose.xyz[i] = py::extract<double>(xyz_tuple[i]);
+  }
+  pose.q_lwheel = py::extract<double>(pose_dict["q_lwheel"]);
+  pose.q_rwheel = py::extract<double>(pose_dict["q_rwheel"]);
+  pose.q_waist = py::extract<double>(pose_dict["q_waist"]);
+  pose.q_torso = py::extract<double>(pose_dict["q_torso"]);
+  for (int i = 0; i < 7; i++) {
+    py::tuple q_left_arm_tuple = py::extract<py::tuple>(pose_dict["q_left_arm"]);
+    pose.q_left_arm[i] = py::extract<double>(q_left_arm_tuple[i]);
+  }
+  for (int i = 0; i < 7; i++) {
+    py::tuple q_right_arm_tuple = py::extract<py::tuple>(pose_dict["q_right_arm"]);
+    pose.q_right_arm[i] = py::extract<double>(q_right_arm_tuple[i]);
+  }
+  for (int i = 0; i < 2; i++) {
+    py::tuple q_camera_tuple = py::extract<py::tuple>(pose_dict["q_camera"]);
+    pose.q_camera[i] = py::extract<double>(q_camera_tuple[i]);
+  }
+  Reset(pose);
 }
 
 void WorldInterface::SendCommand() {
