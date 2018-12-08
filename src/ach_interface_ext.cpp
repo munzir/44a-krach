@@ -90,5 +90,11 @@ BOOST_PYTHON_MODULE(pykrang) {
                     &FloatingBaseStateSensorInterface::GetBaseAngle)
       .add_property("base_angular_speed",
                     &FloatingBaseStateSensorInterface::GetBaseAngularSpeed);
+
+  py::class_<WorldInterface>("WorldInterface",
+                             py::init<InterfaceContext&, std::string>())
+      .def("Destroy", &WorldInterface::Destroy)
+      .def("Step", &WorldInterface::Step)
+      .def("Reset", &WorldInterface::ResetExt);
 }
 
