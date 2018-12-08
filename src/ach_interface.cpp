@@ -46,7 +46,7 @@
 
 #include <ach.h>           // ach_channel_t, ach_status_t, ach_result_to_string
 #include <amino.h>         // aa_tm: _add, _sec2timespec(); aa_mem_ion_release()
-#include <somatic.pb-c.h>  // SOMATIC__: EVENT, MOTOR, WAIST_MODE; somatic__anymsgtype__action(); Somatic__Waist: Mode, Cmd
+#include <somatic.pb-c.h>  // SOMATIC__: EVENT, MOTOR, WAIST_MODE; somatic__anymsgtype__action(); Somatic__Waist: Mode, Cmd; SOMATIC__SIM_CMD__CODE__: STEP, RESET
 #include <somatic/daemon.h>  // somatic_d: _init(), _event(), _destroy(), _channel...()
 #include <somatic/motor.h>  // somati_motor: _t, _init(), _destroy(), _cmd(), _halt(), _reset(), _update()
 #include <somatic/msg.h>  // somatic_anything_: alloc(), set(), free()
@@ -272,4 +272,36 @@ void FloatingBaseStateSensorInterface::UpdateState() {
 void FloatingBaseStateSensorInterface::Destroy() {
   somatic_d_channel_close(daemon_, imu_chan_);
   delete imu_chan_;
+}
+
+WorldInterface::WorldInterface(InterfaceContext& interface_context,
+                               std::string channel) {
+  daemon_ = &interface_context.daemon_;
+  sim_command_msg_ = somatic_sim_cmd_alloc();
+  sim_command_channel_ = new ach_channel_t();
+  somatic_d_channel_open(daemon_, sim_command_channel_, channel.c_str(), NULL);
+}
+
+void WorldInterface::Destroy() {
+  somatic_sim_cmd_free(sim_command_msg_);
+  delete sim_command_channel_;
+}
+
+void WorldInterface::Step() {
+  somatic_sim_cmd_set(sim_command_msg_, SOMATIC__SIM_CMD__CODE__STEP, NULL);
+  SendCommand();
+}
+
+void WorldInterface::Reset(struct Somatic_KrangPoseParams& pose) {
+  somatic_sim_cmd_set(sim_command_msg_, SOMATIC__SIM_CMD__CODE__RESET, &pose);
+  SendCommand();
+}
+
+void WorldInterface::SendCommand() {
+  ach_status_t rach = SOMATIC_PACK_SEND(sim_command_channel_, somatic__sim_cmd,
+                                        sim_command_msg_);
+  somatic_d_check(daemon_, SOMATIC__EVENT__PRIORITIES__CRIT,
+                  SOMATIC__EVENT__CODES__COMM_FAILED_TRANSPORT, ACH_OK == rach,
+                  "somatic_sim_cmd", "ach result: %s",
+                  ach_result_to_string(rach));
 }

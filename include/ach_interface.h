@@ -46,9 +46,10 @@
 #include <somatic.h>  // has correct order of other includes
 
 #include <ach.h>             // ach_channel_t
-#include <somatic.pb-c.h>    // Somatic__Vector, Somatic__Waist: Mode, Cmd
+#include <somatic.pb-c.h>    // Somatic__Vector, Somatic__Waist: Mode, Cmd; Somatic__SimCmd
 #include <somatic/daemon.h>  // somatic_d_t, somatic_d_opts_t
 #include <somatic/motor.h>   // somatic_motor_t
+#include <somatic/msg.h>   // Somatic_KrangPoseParams
 
 #include <string>  // std::string
 #include <vector>  // std::vector
@@ -129,4 +130,18 @@ class FloatingBaseStateSensorInterface {
   double base_angular_speed_;
 };
 
+class WorldInterface {
+ public:
+  WorldInterface(InterfaceContext& interface_context,
+                 std::string channel);
+  ~WorldInterface() { Destroy(); }
+  void Destroy();
+  void Step();
+  void Reset(struct Somatic_KrangPoseParams& pose);
+ private:
+  void SendCommand();
+  somatic_d_t* daemon_;
+  ach_channel_t* sim_command_channel_;
+  Somatic__SimCmd* sim_command_msg_;
+};
 #endif  // KRANG_CONTROL_ACH_INTERFACE_H_
