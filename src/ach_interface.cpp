@@ -81,6 +81,7 @@ void InterfaceContext::Run() {
 }
 
 void InterfaceContext::Destroy() {
+  std::cout << "interface context destroy" << std::endl;
   // Send a "stopping" notice on the event channel
   somatic_d_event(&daemon_, SOMATIC__EVENT__PRIORITIES__NOTICE,
                   SOMATIC__EVENT__CODES__PROC_STOPPING, NULL, NULL);
@@ -122,6 +123,7 @@ MotorInterface::MotorInterface(InterfaceContext& interface_context,
 }
 
 void MotorInterface::Destroy() {
+  std::cout << name_ << " destroy" << std::endl;
   somatic_motor_destroy(daemon_, motors_);
   delete motors_;
 }
@@ -191,6 +193,7 @@ WaistInterface::WaistInterface(InterfaceContext& interface_context,
 }
 
 void WaistInterface::Destroy() {
+  std::cout << name_ << " destroy" << std::endl;
   Stop();
   somatic_waist_cmd_free(waistd_command_msg_);
   somatic_motor_destroy(daemon_, motors_);
@@ -272,6 +275,7 @@ void FloatingBaseStateSensorInterface::UpdateState() {
 }
 
 void FloatingBaseStateSensorInterface::Destroy() {
+  std::cout << "imu destroy" << std::endl;
   somatic_d_channel_close(daemon_, imu_chan_);
   delete imu_chan_;
 }
@@ -285,7 +289,9 @@ WorldInterface::WorldInterface(InterfaceContext& interface_context,
 }
 
 void WorldInterface::Destroy() {
+  std::cout << "world interface destroy" << std::endl;
   somatic_sim_cmd_free(sim_command_msg_);
+  somatic_d_channel_close(daemon_, sim_command_channel_);
   delete sim_command_channel_;
 }
 
