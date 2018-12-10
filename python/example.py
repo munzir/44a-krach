@@ -12,8 +12,9 @@ def str(xvec):
     s += ']'
     return s
 
-
+print 'creating interface context'
 interface_context = pykrang.InterfaceContext('pykrang')
+print 'creating world interface'
 world = pykrang.WorldInterface(interface_context, 'sim-cmd')
 imu = pykrang.FloatingBaseStateSensorInterface(interface_context, 'imu-data')
 wheels = pykrang.MotorInterface(interface_context, 'wheels', 'amc-cmd',
@@ -40,14 +41,16 @@ while True:
         ]
         wheels.CurrentCommand(current_command)
 
+        print 'step'
         world.Step()
+        time.sleep(0.001)
 
         iter = iter + 1
 
-        if iter % 500 == 0:
-            #imu.UpdateState()
-            #print 'imu angle: ', "%.4f" % (imu.base_angle * 180.0 / pi)
-            #print 'imu speed: ', "%.4f" % imu.base_angular_speed
+        if iter % 1 == 0:
+            imu.UpdateState()
+            print 'imu angle: ', "%.4f" % (imu.base_angle * 180.0 / pi)
+            print 'imu speed: ', "%.4f" % imu.base_angular_speed
 
             wheels.UpdateState()
             print 'wheel pos: ', str(wheels.GetPosition())
@@ -69,6 +72,7 @@ while True:
             print 'R-arm vel: ', str(right_arm.GetVelocity())
             print 'R-arm cur: ', str(right_arm.GetCurrent())
 
+        print 'interface context run'
         interface_context.Run()
     except KeyboardInterrupt:
         sys.exit(0)
