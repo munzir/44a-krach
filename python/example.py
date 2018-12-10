@@ -15,16 +15,21 @@ def str(xvec):
 print 'creating interface context'
 interface_context = pykrang.InterfaceContext('pykrang')
 print 'creating world interface'
-world = pykrang.WorldInterface(interface_context, 'sim-cmd')
+world = pykrang.WorldInterface(interface_context, 'sim-cmd', 'sim-state')
+print 'creating imu interface'
 imu = pykrang.FloatingBaseStateSensorInterface(interface_context, 'imu-data')
+print 'creating wheels interface'
 wheels = pykrang.MotorInterface(interface_context, 'wheels', 'amc-cmd',
                                 'amc-state', 2)
+print 'creating torso interface'
 torso = pykrang.MotorInterface(interface_context, 'torso', 'torso-cmd',
                                'torso-state', 1)
 torso.LockCommand()
+print 'creating left_arm interface'
 left_arm = pykrang.MotorInterface(interface_context, 'left-arm', 'llwa-cmd',
                                   'llwa-state', 7)
 left_arm.LockCommand()
+print 'creating right_arm interface'
 right_arm = pykrang.MotorInterface(interface_context, 'right-arm', 'rlwa-cmd',
                                    'rlwa-state', 7)
 right_arm.LockCommand()
@@ -42,8 +47,9 @@ while True:
         wheels.CurrentCommand(current_command)
 
         print 'step'
-        world.Step()
-        time.sleep(0.001)
+        success = world.Step()
+        if not success:
+            sys.exit(0)
 
         iter = iter + 1
 

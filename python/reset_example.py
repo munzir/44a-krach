@@ -1,6 +1,6 @@
 from pykrang import *
 if_cx = InterfaceContext('reset_example-py')
-world = WorldInterface(if_cx, 'sim-cmd')
+world = WorldInterface(if_cx, 'sim-cmd', 'sim-state')
 reset_pose = {
     'heading': 0.0,
     'q_base': -1.74,
@@ -15,3 +15,4 @@ reset_pose = {
 }
 
 world.Reset(reset_pose)
+

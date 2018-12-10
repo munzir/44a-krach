@@ -115,9 +115,7 @@ MotorInterface::MotorInterface(InterfaceContext& interface_context,
     motors_->vel_limit_max[i] = 1024.1;
   }
 
-  // Update and reset them
-  UnlockCommand();
-  usleep(1e5);
+  // State update
   UpdateState();
   usleep(1e5);
 }
@@ -299,11 +297,17 @@ void FloatingBaseStateSensorInterface::Destroy() {
 }
 
 WorldInterface::WorldInterface(InterfaceContext& interface_context,
-                               std::string channel) {
+                               std::string cmd_channel,
+                               std::string state_channel, double max_wait_time)
+    : max_wait_time_(max_wait_time) {
   daemon_ = &interface_context.daemon_;
   sim_command_msg_ = somatic_sim_cmd_alloc();
   sim_command_channel_ = new ach_channel_t();
-  somatic_d_channel_open(daemon_, sim_command_channel_, channel.c_str(), NULL);
+  somatic_d_channel_open(daemon_, sim_command_channel_, cmd_channel.c_str(),
+                         NULL);
+  sim_state_channel_ = new ach_channel_t();
+  somatic_d_channel_open(daemon_, sim_state_channel_, state_channel.c_str(),
+                         NULL);
 }
 
 void WorldInterface::Destroy() {
@@ -314,17 +318,17 @@ void WorldInterface::Destroy() {
   delete sim_command_channel_;
 }
 
-void WorldInterface::Step() {
+bool WorldInterface::Step() {
   somatic_sim_cmd_set(sim_command_msg_, SOMATIC__SIM_CMD__CODE__STEP, NULL);
-  SendCommand();
+  return SendCommand();
 }
 
-void WorldInterface::Reset(struct Somatic_KrangPoseParams& pose) {
+bool WorldInterface::Reset(struct Somatic_KrangPoseParams& pose) {
   somatic_sim_cmd_set(sim_command_msg_, SOMATIC__SIM_CMD__CODE__RESET, &pose);
-  SendCommand();
+  return SendCommand();
 }
 
-void WorldInterface::ResetExt(boost::python::dict& pose_dict) {
+bool WorldInterface::ResetExt(boost::python::dict& pose_dict) {
   namespace py = boost::python;
   struct Somatic_KrangPoseParams pose;
   pose.heading = py::extract<double>(pose_dict["heading"]);
@@ -351,23 +355,37 @@ void WorldInterface::ResetExt(boost::python::dict& pose_dict) {
     py::tuple q_camera_tuple = py::extract<py::tuple>(pose_dict["q_camera"]);
     pose.q_camera[i] = py::extract<double>(q_camera_tuple[i]);
   }
-  Reset(pose);
+  return Reset(pose);
 }
 
-void WorldInterface::SendCommand() {
-  // ach_status_t rach = SOMATIC_PACK_SEND(sim_command_channel_,
-  // somatic__sim_cmd,
-  //                                      sim_command_msg_);
-  //============================================================================
-  size_t _somatic_private_n =
-      somatic__sim_cmd__get_packed_size(sim_command_msg_);
-  uint8_t _somatic_private_buf[_somatic_private_n];
-  somatic__sim_cmd__pack(sim_command_msg_, &_somatic_private_buf[0]);
-  ach_status_t rach = ach_put_loud(sim_command_channel_, _somatic_private_buf,
-                                   _somatic_private_n);
-  //===========================================================================
+bool WorldInterface::SendCommand() {
+  ach_flush(sim_state_channel_);
+  ach_status_t rach = SOMATIC_PACK_SEND(sim_command_channel_, somatic__sim_cmd,
+                                        sim_command_msg_);
+
   somatic_d_check(daemon_, SOMATIC__EVENT__PRIORITIES__CRIT,
                   SOMATIC__EVENT__CODES__COMM_FAILED_TRANSPORT, ACH_OK == rach,
                   "somatic_sim_cmd", "ach result: %s",
                   ach_result_to_string(rach));
+
+  struct timespec curr_time;
+  clock_gettime(CLOCK_MONOTONIC, &curr_time);
+  struct timespec abs_time =
+      aa_tm_add(aa_tm_sec2timespec(max_wait_time_), curr_time);
+  Somatic__SimMsg* state = SOMATIC_WAIT_LAST_UNPACK(
+      rach, somatic__sim_msg, NULL, 8 + 512, sim_state_channel_, &abs_time);
+
+  if (state == NULL || rach == ACH_TIMEOUT) {
+    std::cout
+        << "Failure to receive acknowledgement within the specified wait time. "
+           "Simulation program may not be alive. "
+           "Or its operation time may be longer than the specified wait time."
+        << std::endl;
+
+    return false;
+  }
+
+  somatic__sim_msg__free_unpacked(state, NULL);
+
+  return true;
 }
