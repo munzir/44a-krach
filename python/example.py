@@ -24,15 +24,12 @@ wheels = pykrang.MotorInterface(interface_context, 'wheels', 'amc-cmd',
 print 'creating torso interface'
 torso = pykrang.MotorInterface(interface_context, 'torso', 'torso-cmd',
                                'torso-state', 1)
-torso.LockCommand()
 print 'creating left_arm interface'
 left_arm = pykrang.MotorInterface(interface_context, 'left-arm', 'llwa-cmd',
                                   'llwa-state', 7)
-left_arm.LockCommand()
 print 'creating right_arm interface'
 right_arm = pykrang.MotorInterface(interface_context, 'right-arm', 'rlwa-cmd',
                                    'rlwa-state', 7)
-right_arm.LockCommand()
 
 iter = 0
 dt = 0.001
