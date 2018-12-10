@@ -124,6 +124,10 @@ MotorInterface::MotorInterface(InterfaceContext& interface_context,
 
 void MotorInterface::Destroy() {
   std::cout << name_ << " destroy" << std::endl;
+  ach_cancel(&motors_->cmd_chan, NULL);
+  ach_close(&motors_->cmd_chan);
+  ach_cancel(&motors_->state_chan, NULL);
+  ach_close(&motors_->state_chan);
   somatic_motor_destroy(daemon_, motors_);
   delete motors_;
 }
@@ -196,6 +200,10 @@ void WaistInterface::Destroy() {
   std::cout << name_ << " destroy" << std::endl;
   Stop();
   somatic_waist_cmd_free(waistd_command_msg_);
+  ach_cancel(&motors_->cmd_chan, NULL);
+  ach_close(&motors_->cmd_chan);
+  ach_cancel(&motors_->state_chan, NULL);
+  ach_close(&motors_->state_chan);
   somatic_motor_destroy(daemon_, motors_);
   delete motors_;
   delete waistd_command_channel_;
@@ -243,7 +251,15 @@ FloatingBaseStateSensorInterface::FloatingBaseStateSensorInterface(
 }
 
 void FloatingBaseStateSensorInterface::UpdateState() {
-  // Current time
+  // Read data from ach channel
+  static const int kImuChannelSize = 54;
+  ach_status_t r;
+  // This was originally done as I copied code from balancing
+  // Turns out waiting is a bad idea if you can not
+  // return to the control flow after KeyboardInterrupt (of Python)
+  // to properly release the mutexes. Hence we changed WAIT to GET_LAST
+  // in order to not wait
+  /*
   struct timespec curr_time;
   clock_gettime(CLOCK_MONOTONIC, &curr_time);
 
@@ -253,10 +269,11 @@ void FloatingBaseStateSensorInterface::UpdateState() {
       aa_tm_add(aa_tm_sec2timespec(kWaitTime), curr_time);
 
   // Sit and wait until the new message arrives or time is up
-  static const int kImuChannelSize = 54;
-  ach_status_t r;
   imu_msg_ = SOMATIC_WAIT_LAST_UNPACK(r, somatic__vector, NULL, kImuChannelSize,
                                       imu_chan_, &abs_time);
+  */
+  imu_msg_ = SOMATIC_GET_LAST_UNPACK(r, somatic__vector, NULL, kImuChannelSize,
+                                     imu_chan_);
 
   // If no new message, no need to update
   if (imu_msg_ == NULL) return;
@@ -276,6 +293,7 @@ void FloatingBaseStateSensorInterface::UpdateState() {
 
 void FloatingBaseStateSensorInterface::Destroy() {
   std::cout << "imu destroy" << std::endl;
+  ach_cancel(imu_chan_, NULL);
   somatic_d_channel_close(daemon_, imu_chan_);
   delete imu_chan_;
 }
@@ -291,6 +309,7 @@ WorldInterface::WorldInterface(InterfaceContext& interface_context,
 void WorldInterface::Destroy() {
   std::cout << "world interface destroy" << std::endl;
   somatic_sim_cmd_free(sim_command_msg_);
+  ach_cancel(sim_command_channel_, NULL);
   somatic_d_channel_close(daemon_, sim_command_channel_);
   delete sim_command_channel_;
 }
@@ -319,11 +338,13 @@ void WorldInterface::ResetExt(boost::python::dict& pose_dict) {
   pose.q_waist = py::extract<double>(pose_dict["q_waist"]);
   pose.q_torso = py::extract<double>(pose_dict["q_torso"]);
   for (int i = 0; i < 7; i++) {
-    py::tuple q_left_arm_tuple = py::extract<py::tuple>(pose_dict["q_left_arm"]);
+    py::tuple q_left_arm_tuple =
+        py::extract<py::tuple>(pose_dict["q_left_arm"]);
     pose.q_left_arm[i] = py::extract<double>(q_left_arm_tuple[i]);
   }
   for (int i = 0; i < 7; i++) {
-    py::tuple q_right_arm_tuple = py::extract<py::tuple>(pose_dict["q_right_arm"]);
+    py::tuple q_right_arm_tuple =
+        py::extract<py::tuple>(pose_dict["q_right_arm"]);
     pose.q_right_arm[i] = py::extract<double>(q_right_arm_tuple[i]);
   }
   for (int i = 0; i < 2; i++) {
@@ -334,8 +355,17 @@ void WorldInterface::ResetExt(boost::python::dict& pose_dict) {
 }
 
 void WorldInterface::SendCommand() {
-  ach_status_t rach = SOMATIC_PACK_SEND(sim_command_channel_, somatic__sim_cmd,
-                                        sim_command_msg_);
+  // ach_status_t rach = SOMATIC_PACK_SEND(sim_command_channel_,
+  // somatic__sim_cmd,
+  //                                      sim_command_msg_);
+  //============================================================================
+  size_t _somatic_private_n =
+      somatic__sim_cmd__get_packed_size(sim_command_msg_);
+  uint8_t _somatic_private_buf[_somatic_private_n];
+  somatic__sim_cmd__pack(sim_command_msg_, &_somatic_private_buf[0]);
+  ach_status_t rach = ach_put_loud(sim_command_channel_, _somatic_private_buf,
+                                   _somatic_private_n);
+  //===========================================================================
   somatic_d_check(daemon_, SOMATIC__EVENT__PRIORITIES__CRIT,
                   SOMATIC__EVENT__CODES__COMM_FAILED_TRANSPORT, ACH_OK == rach,
                   "somatic_sim_cmd", "ach result: %s",
