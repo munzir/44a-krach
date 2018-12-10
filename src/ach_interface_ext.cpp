@@ -47,8 +47,8 @@
 BOOST_PYTHON_MODULE(pykrang) {
   namespace py = boost::python;
 
-  py::class_<std::vector<double> >("VectorOfDoubles")
-      .def(py::vector_indexing_suite<std::vector<double> >());
+  py::class_<std::vector<double>>("VectorOfDoubles")
+      .def(py::vector_indexing_suite<std::vector<double>>());
 
   py::class_<InterfaceContext>("InterfaceContext",
                                py::init<const std::string>())
@@ -91,8 +91,9 @@ BOOST_PYTHON_MODULE(pykrang) {
       .add_property("base_angular_speed",
                     &FloatingBaseStateSensorInterface::GetBaseAngularSpeed);
 
-  py::class_<WorldInterface>("WorldInterface",
-                             py::init<InterfaceContext&, std::string>())
+  py::class_<WorldInterface>(
+      "WorldInterface", py::init<InterfaceContext&, std::string, std::string,
+                                 py::optional<double>>())
       .def("Destroy", &WorldInterface::Destroy)
       .def("Step", &WorldInterface::Step)
       .def("Reset", &WorldInterface::ResetExt);
