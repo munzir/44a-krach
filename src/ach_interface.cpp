@@ -61,6 +61,21 @@
 #include <vector>    // std::vector
 
 #include <boost/python.hpp>  // boost::python::dict
+#include <boost/python/stl_iterator.hpp>
+
+template <class T>
+boost::python::list std_vector_to_py_list(const std::vector<T>& v) {
+  boost::python::object get_iter = boost::python::iterator<std::vector<T> >();
+  boost::python::object iter = get_iter(v);
+  boost::python::list l(iter);
+  return l;
+}
+
+template <typename T>
+inline std::vector<T> to_std_vector(const boost::python::object& iterable) {
+  return std::vector<T>(boost::python::stl_input_iterator<T>(iterable),
+                        boost::python::stl_input_iterator<T>());
+}
 
 InterfaceContext::InterfaceContext(const std::string daemon_identifier) {
   // Initialize the daemon_
@@ -130,19 +145,31 @@ void MotorInterface::Destroy() {
   delete motors_;
 }
 
-void MotorInterface::PositionCommand(std::vector<double>& val) {
+void MotorInterface::PositionCommand(const std::vector<double>& val) {
   somatic_motor_cmd(daemon_, motors_, SOMATIC__MOTOR_PARAM__MOTOR_POSITION,
                     &val[0], motors_->n, NULL);
 }
 
-void MotorInterface::VelocityCommand(std::vector<double>& val) {
+void MotorInterface::VelocityCommand(const std::vector<double>& val) {
   somatic_motor_cmd(daemon_, motors_, SOMATIC__MOTOR_PARAM__MOTOR_VELOCITY,
                     &val[0], motors_->n, NULL);
 }
 
-void MotorInterface::CurrentCommand(std::vector<double>& val) {
+void MotorInterface::CurrentCommand(const std::vector<double>& val) {
   somatic_motor_cmd(daemon_, motors_, SOMATIC__MOTOR_PARAM__MOTOR_CURRENT,
                     &val[0], motors_->n, NULL);
+}
+
+void MotorInterface::PositionCommandExt(const boost::python::list& val) {
+  PositionCommand(to_std_vector<double>(val));
+}
+
+void MotorInterface::VelocityCommandExt(const boost::python::list& val) {
+  VelocityCommand(to_std_vector<double>(val));
+}
+
+void MotorInterface::CurrentCommandExt(const boost::python::list& val) {
+  CurrentCommand(to_std_vector<double>(val));
 }
 
 void MotorInterface::LockCommand() { somatic_motor_halt(daemon_, motors_); }
@@ -161,6 +188,18 @@ std::vector<double> MotorInterface::GetVelocity() {
 
 std::vector<double> MotorInterface::GetCurrent() {
   return std::vector<double>(motors_->cur, motors_->cur + n_);
+}
+
+boost::python::list MotorInterface::GetPositionExt() {
+  return std_vector_to_py_list(GetPosition());
+}
+
+boost::python::list MotorInterface::GetVelocityExt() {
+  return std_vector_to_py_list(GetVelocity());
+}
+
+boost::python::list MotorInterface::GetCurrentExt() {
+  return std_vector_to_py_list(GetCurrent());
 }
 
 WaistInterface::WaistInterface(InterfaceContext& interface_context,
@@ -238,6 +277,18 @@ std::vector<double> WaistInterface::GetVelocity() {
 
 std::vector<double> WaistInterface::GetCurrent() {
   return std::vector<double>(motors_->cur, motors_->cur + 2);
+}
+
+boost::python::list WaistInterface::GetPositionExt() {
+  return std_vector_to_py_list(GetPosition());
+}
+
+boost::python::list WaistInterface::GetVelocityExt() {
+  return std_vector_to_py_list(GetVelocity());
+}
+
+boost::python::list WaistInterface::GetCurrentExt() {
+  return std_vector_to_py_list(GetCurrent());
 }
 
 FloatingBaseStateSensorInterface::FloatingBaseStateSensorInterface(
@@ -355,7 +406,8 @@ bool WorldInterface::ResetExt(boost::python::dict& pose_dict) {
     py::tuple q_camera_tuple = py::extract<py::tuple>(pose_dict["q_camera"]);
     pose.q_camera[i] = py::extract<double>(q_camera_tuple[i]);
   }
-  pose.init_with_balance_pose = py::extract<int>(pose_dict["init_with_balance_pose"]);
+  pose.init_with_balance_pose =
+      py::extract<int>(pose_dict["init_with_balance_pose"]);
   return Reset(pose);
 }
 
