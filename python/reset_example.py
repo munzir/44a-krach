@@ -11,7 +11,8 @@ reset_pose = {
     'q_torso': 0.0,
     'q_left_arm': (1.130, -1.000, 0.000, -1.570, -0.000, 1.000, -1.104),
     'q_right_arm': (-1.130, 1.000, -0.000, 1.570, 0.000, -1.000, -0.958),
-    'q_camera': (0.0, 0.0)
+    'q_camera': (0.0, 0.0),
+    'init_with_balance_pose': True
 }
 
 world.Reset(reset_pose)
