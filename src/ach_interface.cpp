@@ -355,6 +355,7 @@ bool WorldInterface::ResetExt(boost::python::dict& pose_dict) {
     py::tuple q_camera_tuple = py::extract<py::tuple>(pose_dict["q_camera"]);
     pose.q_camera[i] = py::extract<double>(q_camera_tuple[i]);
   }
+  pose.init_with_balance_pose = py::extract<int>(pose_dict["init_with_balance_pose"]);
   return Reset(pose);
 }
 
