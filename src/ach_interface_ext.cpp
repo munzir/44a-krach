@@ -59,15 +59,15 @@ BOOST_PYTHON_MODULE(pykrang) {
       "MotorInterface",
       py::init<InterfaceContext&, std::string, std::string, std::string, int>())
       .def("Destroy", &MotorInterface::Destroy)
-      .def("PositionCommand", &MotorInterface::PositionCommand)
-      .def("VelocityCommand", &MotorInterface::VelocityCommand)
-      .def("CurrentCommand", &MotorInterface::CurrentCommand)
+      .def("PositionCommand", &MotorInterface::PositionCommandExt)
+      .def("VelocityCommand", &MotorInterface::VelocityCommandExt)
+      .def("CurrentCommand", &MotorInterface::CurrentCommandExt)
       .def("LockCommand", &MotorInterface::LockCommand)
       .def("UnlockCommand", &MotorInterface::UnlockCommand)
       .def("UpdateState", &MotorInterface::UpdateState)
-      .def("GetPosition", &MotorInterface::GetPosition)
-      .def("GetVelocity", &MotorInterface::GetVelocity)
-      .def("GetCurrent", &MotorInterface::GetCurrent);
+      .def("GetPosition", &MotorInterface::GetPositionExt)
+      .def("GetVelocity", &MotorInterface::GetVelocityExt)
+      .def("GetCurrent", &MotorInterface::GetCurrentExt);
 
   py::class_<WaistInterface>(
       "WaistInterface",
@@ -77,9 +77,9 @@ BOOST_PYTHON_MODULE(pykrang) {
       .def("MoveForward", &WaistInterface::MoveForward)
       .def("MoveBackward", &WaistInterface::MoveBackward)
       .def("UpdateState", &WaistInterface::UpdateState)
-      .def("GetPosition", &WaistInterface::GetPosition)
-      .def("GetVelocity", &WaistInterface::GetVelocity)
-      .def("GetCurrent", &WaistInterface::GetCurrent);
+      .def("GetPosition", &WaistInterface::GetPositionExt)
+      .def("GetVelocity", &WaistInterface::GetVelocityExt)
+      .def("GetCurrent", &WaistInterface::GetCurrentExt);
 
   py::class_<FloatingBaseStateSensorInterface>(
       "FloatingBaseStateSensorInterface",

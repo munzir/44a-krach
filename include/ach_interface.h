@@ -74,15 +74,21 @@ class MotorInterface {
   ~MotorInterface() { Destroy(); }
   void Destroy();
 
-  void PositionCommand(std::vector<double>& val);
-  void VelocityCommand(std::vector<double>& val);
-  void CurrentCommand(std::vector<double>& val);
+  void PositionCommand(const std::vector<double>& val);
+  void VelocityCommand(const std::vector<double>& val);
+  void CurrentCommand(const std::vector<double>& val);
+  void PositionCommandExt(const boost::python::list& val);
+  void VelocityCommandExt(const boost::python::list& val);
+  void CurrentCommandExt(const boost::python::list& val);
   void LockCommand();
   void UnlockCommand();
   void UpdateState();
   std::vector<double> GetPosition();
   std::vector<double> GetVelocity();
   std::vector<double> GetCurrent();
+  boost::python::list GetPositionExt();
+  boost::python::list GetVelocityExt();
+  boost::python::list GetCurrentExt();
 
   char name_[128];
   somatic_d_t* daemon_;
@@ -105,6 +111,9 @@ class WaistInterface {
   std::vector<double> GetPosition();
   std::vector<double> GetVelocity();
   std::vector<double> GetCurrent();
+  boost::python::list GetPositionExt();
+  boost::python::list GetVelocityExt();
+  boost::python::list GetCurrentExt();
 
  private:
   void SendCommand(Somatic__WaistMode waist_mode);

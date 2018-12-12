@@ -3,14 +3,9 @@ import pykrang
 import time
 from math import *
 
+def str(x):
+    return ["{0:3.3f}".format(i) for i in x]
 
-def str(xvec):
-    s = '[ '
-    for x in xvec:
-        s += "%.4f" % x
-        s += ' '
-    s += ']'
-    return s
 
 print 'creating interface context'
 interface_context = pykrang.InterfaceContext('pykrang')
@@ -35,9 +30,8 @@ iter = 0
 dt = 0.001
 while True:
     try:
-        current_command = pykrang.VectorOfDoubles()
         period = 5.0  # sec
-        current_command[:] = [
+        current_command = [
             30 * sin(2 * pi * iter * dt / period),
             30 * sin(2 * pi * iter * dt / period)
         ]
