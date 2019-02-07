@@ -43,6 +43,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 # Copy python scripts to build folder
 configure_file(python/example.py example.py COPYONLY)
 configure_file(python/reset_example.py reset_example.py COPYONLY)
+configure_file(python/control_motor.py control_motor.py COPYONLY)
 
 # Collect the source, script and fortran files
 file(GLOB main_source "src/ach_interface.cpp")
