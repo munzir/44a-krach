@@ -56,3 +56,11 @@ add_library(pykrang SHARED "src/ach_interface_ext.cpp")
 target_link_libraries(pykrang ${Boost_LIBRARIES} pykrangcpp)
 # don't prepend wrapper library name with lib
 set_target_properties(pykrang PROPERTIES PREFIX "" )
+
+# Install
+install(TARGETS pykrangcpp DESTINATION /usr/local/lib)
+message(STATUS ${PYTHON_INSTALL_PATH})
+FILE(GLOB headers "include/pykrang/*.h" "include/pykrang/*.hpp")
+install(FILES ${headers} DESTINATION /usr/local/include/pykrang)
+
+message(STATUS " ")

@@ -42,7 +42,7 @@
 
 #include <boost/python.hpp>
 #include <boost/python/suite/indexing/vector_indexing_suite.hpp>
-#include "ach_interface.h"
+#include "pykrang/ach_interface.h"
 
 BOOST_PYTHON_MODULE(pykrang) {
   namespace py = boost::python;
