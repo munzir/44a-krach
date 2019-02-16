@@ -40,7 +40,7 @@
  * @brief Ach interface for controlling krang
  */
 
-#include "ach_interface.h"
+#include "pykrang/ach_interface.h"
 
 #include <somatic.h>  // has correct order of other includes, SOMATIC_WAIST_LAST_UNPACK, SOMATIC_PACK_SEND
 

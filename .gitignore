@@ -11,9 +11,12 @@
 
 !/include/
 /include/*
-!/include/ach_interface.h
+!/include/pykrang/
+/include/pykrang/*
+!/include/pykrang/ach_interface.h
 
 !/python/
 /python/*
 !/python/example.py
 !/python/reset_example.py
+!/python/control_motor.py
