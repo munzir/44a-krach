@@ -6,17 +6,11 @@
 
 !/src/
 /src/*
-!/src/ach_interface.cpp
-!/src/ach_interface_ext.cpp
+!/src/krach.cpp
+!/src/krach_ext.cpp
 
 !/include/
 /include/*
-!/include/pykrang/
-/include/pykrang/*
-!/include/pykrang/ach_interface.h
-
-!/python/
-/python/*
-!/python/example.py
-!/python/reset_example.py
-!/python/control_motor.py
+!/include/krach/
+/include/krach/*
+!/include/krach/krach.h
