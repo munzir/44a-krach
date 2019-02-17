@@ -55,8 +55,6 @@
 #include <string>  // std::string
 #include <vector>  // std::vector
 
-#include <boost/python.hpp>
-
 class InterfaceContext {
  public:
   InterfaceContext(const std::string daemon_identifier);
@@ -78,18 +76,12 @@ class MotorInterface {
   void PositionCommand(const std::vector<double>& val);
   void VelocityCommand(const std::vector<double>& val);
   void CurrentCommand(const std::vector<double>& val);
-  void PositionCommandExt(const boost::python::list& val);
-  void VelocityCommandExt(const boost::python::list& val);
-  void CurrentCommandExt(const boost::python::list& val);
   void LockCommand();
   void UnlockCommand();
   void UpdateState();
   std::vector<double> GetPosition();
   std::vector<double> GetVelocity();
   std::vector<double> GetCurrent();
-  boost::python::list GetPositionExt();
-  boost::python::list GetVelocityExt();
-  boost::python::list GetCurrentExt();
 
   char name_[128];
   somatic_d_t* daemon_;
@@ -112,9 +104,6 @@ class WaistInterface {
   std::vector<double> GetPosition();
   std::vector<double> GetVelocity();
   std::vector<double> GetCurrent();
-  boost::python::list GetPositionExt();
-  boost::python::list GetVelocityExt();
-  boost::python::list GetCurrentExt();
 
  private:
   void SendCommand(Somatic__WaistMode waist_mode);
@@ -150,7 +139,6 @@ class WorldInterface {
   void Destroy();
   bool Step();
   bool Reset(struct Somatic_KrangPoseParams& pose);
-  bool ResetExt(boost::python::dict& pose_dict);
 
  private:
   bool SendCommand();
