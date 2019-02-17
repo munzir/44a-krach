@@ -1,13 +1,17 @@
 /*
 
 !.gitignore
-!CMakeLists.txt
+
 !README.md
+
+!CMakeLists.txt
+!/cmake/
+/cmake/*
+!/cmake/cmake_uninstall.cmake.in
 
 !/src/
 /src/*
 !/src/krach.cpp
-!/src/krach_ext.cpp
 
 !/include/
 /include/*
