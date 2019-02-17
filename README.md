@@ -1,5 +1,5 @@
-# 44-pykrang
-Pyhthon interface for ach communication on krang
+# 44a-krach
+C++ interface for ach communication on krang
 
 ## Dependencies
 
