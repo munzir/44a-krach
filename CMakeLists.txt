@@ -45,6 +45,7 @@ file(GLOB main_source "src/krach.cpp")
 
 # Build the library and set the executables that use it (have to hardcode for now)
 add_library(krach SHARED ${main_source})
+target_link_libraries(krach ${Boost_LIBRARIES})
 
 # Install
 install(TARGETS krach DESTINATION /usr/local/lib)
