@@ -15,7 +15,7 @@ C++ interface for ach communication on krang
 For simulation:
 
 - [41-krang-sim-ach](https://github.gatech.edu/WholeBodyControlAttempt1/41-krang-sim-ach)
- Install the repository.
+ Install the repo.
 
 ## Installation
 
