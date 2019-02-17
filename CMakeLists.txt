@@ -20,13 +20,6 @@ endif()
 # ===================================================================================
 # Include and link to libraries
 
-# Find necessary packages
-find_package( PythonLibs 2.7 REQUIRED )
-include_directories( ${PYTHON_INCLUDE_DIRS} )
-
-find_package( Boost COMPONENTS python REQUIRED )
-include_directories( ${Boost_INCLUDE_DIR} )
-
 # Link to somatic, amino and ach
 # NOTE: Ideally we would like to 'find' these packages but for now, we assume they are either
 # in /usr/lib or /usr/local/lib
@@ -45,7 +38,6 @@ file(GLOB main_source "src/krach.cpp")
 
 # Build the library and set the executables that use it (have to hardcode for now)
 add_library(krach SHARED ${main_source})
-target_link_libraries(krach ${Boost_LIBRARIES})
 
 # Install
 install(TARGETS krach DESTINATION /usr/local/lib)
