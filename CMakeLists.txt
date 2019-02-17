@@ -2,7 +2,7 @@
 # @date Nov 14, 2018
 
 cmake_minimum_required(VERSION 2.6)
-project(pykrang)
+project(krach)
 
 # Set the top level directory for use in the code
 add_definitions(-DTOP_LEVEL_PATH="${CMAKE_SOURCE_DIR}")
@@ -40,27 +40,15 @@ link_libraries(stdc++ amino protobuf-c ach somatic)
 include_directories(include)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-# Copy python scripts to build folder
-configure_file(python/example.py example.py COPYONLY)
-configure_file(python/reset_example.py reset_example.py COPYONLY)
-configure_file(python/control_motor.py control_motor.py COPYONLY)
-
 # Collect the source, script and fortran files
-file(GLOB main_source "src/ach_interface.cpp")
+file(GLOB main_source "src/krach.cpp")
 
 # Build the library and set the executables that use it (have to hardcode for now)
-add_library(pykrangcpp SHARED ${main_source})
-
-# Define the wrapper library that wraps our library
-add_library(pykrang SHARED "src/ach_interface_ext.cpp")
-target_link_libraries(pykrang ${Boost_LIBRARIES} pykrangcpp)
-# don't prepend wrapper library name with lib
-set_target_properties(pykrang PROPERTIES PREFIX "" )
+add_library(krach SHARED ${main_source})
 
 # Install
-install(TARGETS pykrangcpp DESTINATION /usr/local/lib)
-message(STATUS ${PYTHON_INSTALL_PATH})
-FILE(GLOB headers "include/pykrang/*.h" "include/pykrang/*.hpp")
-install(FILES ${headers} DESTINATION /usr/local/include/pykrang)
+install(TARGETS krach DESTINATION /usr/local/lib)
+FILE(GLOB headers "include/krach/krach.h" "include/krach/*.hpp")
+install(FILES ${headers} DESTINATION /usr/local/include/krach)
 
 message(STATUS " ")
