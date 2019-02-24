@@ -14,6 +14,7 @@ C++ interface for ach communication on krang
     cd build
     cmake ..
     sudo make install
+    sudo ldconfig
 
 ## Uninstall
  To remove system files by the installation of this repo.
